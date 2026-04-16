@@ -1,23 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, PT_Serif } from "next/font/google";
+import { DM_Sans, JetBrains_Mono, Syne } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap",
 });
 
-const ptSerif = PT_Serif({
-  variable: "--font-pt-serif",
+const syne = Syne({
+  variable: "--font-syne",
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["600", "700", "800"],
   display: "swap",
 });
 
@@ -27,15 +27,6 @@ export const metadata: Metadata = {
   description:
     "Interactive demo for Fields of The World (FTW) — run field boundary delineation models directly in the browser on satellite imagery.",
 };
-
-const themeScript = `
-  (function() {
-    var theme = localStorage.getItem('theme');
-    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark');
-    }
-  })();
-`;
 
 export default function RootLayout({
   children,
@@ -58,15 +49,12 @@ export default function RootLayout({
             "worker-src 'self' blob:",
           ].join("; ")}
         />
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
         <link rel="preconnect" href="https://raw.githubusercontent.com" />
         <link rel="dns-prefetch" href="https://raw.githubusercontent.com" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${ptSerif.variable} antialiased`}
-      >
+      <body className={`${dmSans.variable} ${jetbrainsMono.variable} ${syne.variable} antialiased`}>
         <main>{children}</main>
       </body>
     </html>

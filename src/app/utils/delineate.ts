@@ -1,6 +1,6 @@
 import * as tf from "@tensorflow/tfjs";
 import { fromArrayBuffer } from "geotiff";
-import { extractPatches as extractPatchesShared, GeoImage, Patch } from "./common";
+import { extractPatches as extractPatchesShared, type GeoImage, type Patch } from "./common";
 
 export const PATCH_SIZE = 256;
 export const MODEL_INPUT_SIZE = 512;
@@ -94,7 +94,7 @@ function decodeDetectionsForPatch(
     const classSlice = raw.slice(5, 5 + numClasses);
     const classScores = computeClassScores(classSlice, numClasses);
     const maxClassScore = Math.max(...classScores);
-    const classId = numClasses <= 1 ? 0 : classScores.findIndex((score) => score === maxClassScore);
+    const classId = numClasses <= 1 ? 0 : classScores.indexOf(maxClassScore);
     const score = objectness * maxClassScore;
 
     if (!Number.isFinite(score) || score < scoreThreshold) {
@@ -216,7 +216,9 @@ export async function runModelOnPatch(
     rawDetections.dispose();
 
     if (outputs.length > 1) {
-      outputs.slice(1).forEach((tensor) => tensor.dispose());
+      for (const tensor of outputs.slice(1)) {
+        tensor.dispose();
+      }
     }
 
     batchedInput.dispose();

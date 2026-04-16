@@ -4,14 +4,19 @@ import type { GraphModel } from "@tensorflow/tfjs";
 import * as tf from "@tensorflow/tfjs";
 import Image from "next/image";
 import type { InferenceSession } from "onnxruntime-web";
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Footer } from "@/components/footer";
 import bannerImage from "./banner3.webp";
 import type { GeoImage, Patch } from "./utils/common";
 import * as delineateUtils from "./utils/delineate";
-import { Footer } from "@/components/footer";
-import { Detection, extractPatches, nonMaxSuppressionTf, runModelOnPatch } from "./utils/delineate";
+import {
+  type Detection,
+  extractPatches,
+  nonMaxSuppressionTf,
+  runModelOnPatch,
+} from "./utils/delineate";
 import { runPatchInferenceClient } from "./utils/ftw";
-import { MODEL_OPTIONS, type ModelOption, loadModelFromOption } from "./utils/model-loader";
+import { loadModelFromOption, MODEL_OPTIONS, type ModelOption } from "./utils/model-loader";
 
 const RANDOM_URLS_TXT = "/ftw/ftw_urls.txt";
 
@@ -143,7 +148,7 @@ export default function DelineatePage() {
       ? Math.round(segmentationProbs.length / numSegmentationPixels)
       : 0;
 
-  const hexToRgb = (hex: string): [number, number, number] => {
+  const hexToRgb = useCallback((hex: string): [number, number, number] => {
     const sanitized = hex.replace("#", "");
     const value =
       sanitized.length === 3
@@ -154,7 +159,7 @@ export default function DelineatePage() {
         : sanitized.padEnd(6, "0");
     const num = Number.parseInt(value, 16);
     return [(num >> 16) & 0xff, (num >> 8) & 0xff, num & 0xff];
-  };
+  }, []);
 
   const waitForOnnxSession = useCallback(async (): Promise<InferenceSession> => {
     const maxAttempts = 30;
@@ -173,7 +178,7 @@ export default function DelineatePage() {
     try {
       const u = new URL(url);
       const parts = u.pathname.split("/").filter(Boolean);
-      const countryIdx = parts.findIndex((p) => p === "fields-of-the-world");
+      const countryIdx = parts.indexOf("fields-of-the-world");
       if (countryIdx < 0 || countryIdx + 3 >= parts.length) return null;
       const countryRaw = parts[countryIdx + 1] ?? "";
       const windowRaw = parts[countryIdx + 3] ?? "";
@@ -288,6 +293,7 @@ export default function DelineatePage() {
     ctx.putImageData(imageData, 0, 0);
     return { canvas, counts };
   }, [
+    hexToRgb,
     isSegmentation,
     positiveClassIndex,
     scoreThreshold,
@@ -867,7 +873,7 @@ export default function DelineatePage() {
 
   useEffect(() => {
     void paintCanvas(detections);
-  }, [maskOpacity, detections, paintCanvas]);
+  }, [detections, paintCanvas]);
   useEffect(() => {
     if (backendName === "initializing") {
       return;
@@ -982,7 +988,7 @@ export default function DelineatePage() {
     }
 
     setProcessingStatus("Done");
-  }, [detections.length, iouThreshold, isProcessing, rawDetections.length, scoreThreshold]);
+  }, [detections.length, isProcessing, rawDetections.length]);
 
   const processGeoTiffFile = useCallback(
     async (file: File) => {
@@ -1004,7 +1010,9 @@ export default function DelineatePage() {
           setSegmentationProbs(null);
           setSegmentationDimensions(null);
           setSegmentationCounts(null);
-          const geoImage = await delineateUtils.loadGeoTiffRgbn(file);
+          const loadFn =
+            option.channels === 3 ? delineateUtils.loadGeoTiffRgb : delineateUtils.loadGeoTiffRgbn;
+          const geoImage = await loadFn(file);
           geoImageRef.current = geoImage;
           fileNameRef.current = file.name;
 
@@ -1109,20 +1117,87 @@ export default function DelineatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fdf1e4]">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-6 pb-16 pt-10 text-center">
-        <section className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-900/80">
+    <div className="content-layer min-h-screen">
+      {/* Floating background orbs */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+        <div
+          style={{
+            position: "absolute",
+            width: "900px",
+            height: "700px",
+            top: "-280px",
+            left: "-250px",
+            borderRadius: "50%",
+            background: "radial-gradient(ellipse, rgba(58,107,84,0.07) 0%, transparent 68%)",
+            filter: "blur(70px)",
+            animation: "float1 36s ease-in-out infinite",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: "700px",
+            height: "800px",
+            bottom: "-200px",
+            right: "-180px",
+            borderRadius: "50%",
+            background: "radial-gradient(ellipse, rgba(180,130,60,0.06) 0%, transparent 68%)",
+            filter: "blur(70px)",
+            animation: "float2 42s ease-in-out infinite",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            width: "500px",
+            height: "500px",
+            top: "40%",
+            left: "40%",
+            borderRadius: "50%",
+            background: "radial-gradient(ellipse, rgba(58,107,84,0.04) 0%, transparent 65%)",
+            filter: "blur(60px)",
+            animation: "float1 50s ease-in-out infinite reverse",
+          }}
+        />
+      </div>
+
+      <div
+        className="relative mx-auto flex max-w-5xl flex-col gap-8 px-6 pb-16 pt-10"
+        style={{ zIndex: 1 }}
+      >
+        {/* ── Hero ─────────────────────────────────────────────────── */}
+        <section
+          className="relative overflow-hidden rounded-2xl"
+          style={{ boxShadow: "0 4px 32px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.07)" }}
+        >
           <Image
             src={bannerImage}
             alt="Aerial mosaic of agricultural fields"
             priority
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="relative flex flex-col gap-3 bg-gradient-to-r from-black/70 via-black/40 to-black/10 px-6 py-12 text-white sm:px-10 text-center">
-            <h1 className="text-left text-3xl font-semibold md:text-4xl">
-              Fields of the World (FTW) Demo
+          <div
+            className="relative flex flex-col gap-4 px-8 py-12 sm:px-12"
+            style={{
+              background:
+                "linear-gradient(120deg, rgba(3,8,15,0.88) 0%, rgba(3,8,15,0.65) 55%, rgba(3,8,15,0.28) 100%)",
+              backdropFilter: "blur(2px)",
+            }}
+          >
+            <div className="glass-chip self-start">
+              <span className="pulse-dot" style={{ width: 5, height: 5 }} />
+              In-Browser ML
+            </div>
+            <h1
+              className="font-display text-left text-3xl font-bold md:text-4xl"
+              style={{ color: "rgba(240,248,255,0.97)", textShadow: "0 2px 24px rgba(0,0,0,0.6)" }}
+            >
+              Fields of the World
             </h1>
-            <p className="max-w-2xl text-sm md:text-base">
+            <p
+              className="max-w-2xl text-sm leading-relaxed md:text-base"
+              style={{ color: "rgba(186,210,235,0.72)" }}
+            >
               Upload a GeoTIFF from your own imagery to preview it instantly and let the browser
               highlight field boundaries for you. Pick a model, adjust the confidence sliders, and
               watch the detections update live&mdash;no installs required.
@@ -1130,21 +1205,20 @@ export default function DelineatePage() {
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-          <div className="space-y-6">
-            <section className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-              <div className="max-h-[70vh] overflow-auto rounded border border-neutral-200 bg-neutral-900/5 p-2">
-                <canvas ref={canvasRef} className="h-auto max-w-full" style={{ width: "100%" }} />
-              </div>
-            </section>
+        {/* ── Main grid ───────────────────────────────────────────── */}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(310px,1fr)]">
+          {/* Canvas panel */}
+          <div className="glass-card overflow-hidden p-4">
+            <div className="canvas-container max-h-[70vh] p-2">
+              <canvas ref={canvasRef} className="h-auto max-w-full" style={{ width: "100%" }} />
+            </div>
           </div>
 
-          <div className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm lg:sticky lg:top-6 lg:h-fit">
+          {/* Controls panel */}
+          <div className="glass-card flex flex-col gap-5 p-5 lg:sticky lg:top-6 lg:h-fit">
+            {/* Model selector */}
             <div className="flex flex-col gap-2">
-              <label
-                className="text-left text-sm font-medium text-neutral-700"
-                htmlFor="model-select"
-              >
+              <label className="info-label" htmlFor="model-select">
                 Model Variant
               </label>
               <select
@@ -1152,7 +1226,7 @@ export default function DelineatePage() {
                 value={selectedModelId}
                 onChange={(event) => setSelectedModelId(event.target.value)}
                 disabled={isProcessing}
-                className="rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-neutral-500 focus:outline-none"
+                className="glass-select"
               >
                 {MODEL_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -1162,11 +1236,15 @@ export default function DelineatePage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                 {MODEL_OPTIONS.find((m) => m.id === selectedModelId)?.description ??
-                  "Select a model to download it from Hugging Face and cache it locally."}
+                  "Select a model to download from Hugging Face and cache locally."}
               </p>
             </div>
+
+            <hr className="glass-divider" />
+
+            {/* Actions */}
             <div className="flex flex-row flex-wrap items-center justify-center gap-2">
               <button
                 type="button"
@@ -1174,7 +1252,7 @@ export default function DelineatePage() {
                   void handleRandomClick();
                 }}
                 disabled={isProcessing || !model}
-                className="whitespace-nowrap rounded-md border border-neutral-300 bg-neutral-900 px-3 py-1 text-xs text-white shadow-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-glass"
               >
                 Random Sample
               </button>
@@ -1184,7 +1262,7 @@ export default function DelineatePage() {
                   fileInputRef.current?.click();
                 }}
                 disabled={(!model && !isSegmentation) || isProcessing}
-                className="whitespace-nowrap rounded-md border border-neutral-300 bg-neutral-900 px-3 py-1 text-xs text-white shadow-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-glass"
               >
                 Upload GeoTIFF
               </button>
@@ -1198,15 +1276,17 @@ export default function DelineatePage() {
                 className="hidden"
               />
             </div>
+
+            <hr className="glass-divider" />
+
+            {/* Sliders */}
             <div className="grid gap-4 sm:grid-cols-2">
               {!isSegmentation && (
-                <label className="flex flex-col gap-1 text-sm text-neutral-600">
-                  <span className="flex items-center justify-between font-medium text-neutral-700">
+                <label className="glass-label">
+                  <div className="glass-label-header">
                     Score Threshold
-                    <span className="text-xs font-normal text-neutral-500">
-                      {scoreThreshold.toFixed(2)}
-                    </span>
-                  </span>
+                    <span className="glass-label-value">{scoreThreshold.toFixed(2)}</span>
+                  </div>
                   <input
                     type="range"
                     min={0}
@@ -1215,24 +1295,19 @@ export default function DelineatePage() {
                     value={scoreThreshold}
                     onChange={(event) => {
                       const next = Number(event.target.value);
-                      if (Number.isNaN(next)) {
-                        return;
-                      }
-                      const clamped = clampUnit(next);
-                      setScoreThreshold(clamped);
+                      if (Number.isNaN(next)) return;
+                      setScoreThreshold(clampUnit(next));
                     }}
-                    className="w-full accent-neutral-700"
+                    className="glass-range"
                   />
                 </label>
               )}
               {!isSegmentation && (
-                <label className="flex flex-col gap-1 text-sm text-neutral-600">
-                  <span className="flex items-center justify-between font-medium text-neutral-700">
+                <label className="glass-label">
+                  <div className="glass-label-header">
                     IoU NMS Threshold
-                    <span className="text-xs font-normal text-neutral-500">
-                      {iouThreshold.toFixed(2)}
-                    </span>
-                  </span>
+                    <span className="glass-label-value">{iouThreshold.toFixed(2)}</span>
+                  </div>
                   <input
                     type="range"
                     min={0}
@@ -1241,46 +1316,38 @@ export default function DelineatePage() {
                     value={iouThreshold}
                     onChange={(event) => {
                       const next = Number(event.target.value);
-                      if (Number.isNaN(next)) {
-                        return;
-                      }
+                      if (Number.isNaN(next)) return;
                       setIouThreshold(clampUnit(next));
                     }}
-                    className="w-full accent-neutral-700"
+                    className="glass-range"
                   />
                 </label>
               )}
-              <label className="flex flex-col gap-1 text-sm text-neutral-600">
-                <span className="flex items-center justify-between font-medium text-neutral-700">
+              <label className="glass-label">
+                <div className="glass-label-header">
                   Patch Size
-                  <span className="text-xs font-normal text-neutral-500">{patchSize}px</span>
-                </span>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={PATCH_MIN}
-                    max={PATCH_MAX}
-                    step={PATCH_STEP}
-                    value={patchSize}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      if (Number.isNaN(next)) {
-                        return;
-                      }
-                      handlePatchSizeChange(next);
-                    }}
-                    className="h-1 flex-1 accent-neutral-700"
-                  />
+                  <span className="glass-label-value">{patchSize}px</span>
                 </div>
+                <input
+                  type="range"
+                  min={PATCH_MIN}
+                  max={PATCH_MAX}
+                  step={PATCH_STEP}
+                  value={patchSize}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    if (Number.isNaN(next)) return;
+                    handlePatchSizeChange(next);
+                  }}
+                  className="glass-range"
+                />
               </label>
               {isSegmentation && (
-                <label className="flex flex-col gap-1 text-sm text-neutral-600">
-                  <span className="flex items-center justify-between font-medium text-neutral-700">
+                <label className="glass-label">
+                  <div className="glass-label-header">
                     Mask Opacity
-                    <span className="text-xs font-normal text-neutral-500">
-                      {(maskOpacity * 100).toFixed(0)}%
-                    </span>
-                  </span>
+                    <span className="glass-label-value">{(maskOpacity * 100).toFixed(0)}%</span>
+                  </div>
                   <input
                     type="range"
                     min={0}
@@ -1289,87 +1356,118 @@ export default function DelineatePage() {
                     value={maskOpacity}
                     onChange={(event) => {
                       const next = Number(event.target.value);
-                      if (Number.isNaN(next)) {
-                        return;
-                      }
+                      if (Number.isNaN(next)) return;
                       const clamped = Math.max(0, Math.min(1, next));
                       setMaskOpacity(clamped);
                       window.requestAnimationFrame(() => {
                         void paintCanvas(detections);
                       });
                     }}
-                    className="w-full accent-neutral-700"
+                    className="glass-range"
                   />
                 </label>
               )}
-              <label className="flex flex-col gap-1 text-sm text-neutral-600 sm:col-span-2">
-                <span className="flex items-center justify-between font-medium text-neutral-700">
+              <label className="glass-label sm:col-span-2">
+                <div className="glass-label-header">
                   Normalization Divisor
-                  <span className="text-xs font-normal text-neutral-500">
-                    {normalizationFactor.toLocaleString()}
-                  </span>
-                </span>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={NORMALIZATION_MIN}
-                    max={NORMALIZATION_MAX}
-                    step={NORMALIZATION_STEP}
-                    value={normalizationFactor}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      if (Number.isNaN(next)) {
-                        return;
-                      }
-                      handleNormalizationUpdate(next);
-                    }}
-                    className="h-1 flex-1 accent-neutral-700"
-                  />
+                  <span className="glass-label-value">{normalizationFactor.toLocaleString()}</span>
                 </div>
-                <span className="text-xs text-neutral-500">
+                <input
+                  type="range"
+                  min={NORMALIZATION_MIN}
+                  max={NORMALIZATION_MAX}
+                  step={NORMALIZATION_STEP}
+                  value={normalizationFactor}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    if (Number.isNaN(next)) return;
+                    handleNormalizationUpdate(next);
+                  }}
+                  className="glass-range"
+                />
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                   Adjust brightness of pixel values for inference
                 </span>
               </label>
             </div>
-            <div className="grid gap-2 text-sm text-neutral-600">
-              <span>
-                <span className="font-medium text-neutral-700">Model Status:</span> {modelStatus}
-              </span>
-              <span>
-                <span className="font-medium text-neutral-700">Inference Backend:</span>{" "}
-                {backendName}
-                {backendError ? ` (${backendError})` : ""}
-              </span>
-              {processingStatus && (
-                <span>
-                  <span className="font-medium text-neutral-700">Processing:</span>{" "}
-                  {processingStatus}
+
+            <hr className="glass-divider" />
+
+            {/* Status info */}
+            <div className="flex flex-col gap-2">
+              <div className="info-row">
+                <span className="info-label">Model</span>
+                <span className="info-value">{modelStatus}</span>
+              </div>
+              <div className="info-row">
+                <span className="info-label">Backend</span>
+                <span className="info-value font-mono" style={{ fontSize: "0.75rem" }}>
+                  {backendName}
+                  {backendError ? ` (${backendError})` : ""}
                 </span>
+              </div>
+              {processingStatus && (
+                <div className="info-row">
+                  <span className="info-label">Status</span>
+                  <span
+                    className="info-value"
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    {isProcessing && (
+                      <span className="pulse-dot" style={{ color: "var(--accent)" }} />
+                    )}
+                    {processingStatus}
+                  </span>
+                </div>
               )}
               {imageInfo && (
                 <>
-                  <span>
-                    <span className="font-medium text-neutral-700">Image:</span>{" "}
-                    {imageLabel ?? imageInfo.fileName}
-                  </span>
-                  <span>
-                    <span className="font-medium text-neutral-700">Size:</span> {imageInfo.width}{" "}
-                    &times; {imageInfo.height}px &middot; {imageInfo.patchCount} full patches
-                  </span>
+                  <div className="info-row">
+                    <span className="info-label">Image</span>
+                    <span
+                      className="info-value"
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "160px",
+                      }}
+                      title={imageLabel ?? imageInfo.fileName}
+                    >
+                      {imageLabel ?? imageInfo.fileName}
+                    </span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Size</span>
+                    <span className="info-value font-mono" style={{ fontSize: "0.75rem" }}>
+                      {imageInfo.width}&times;{imageInfo.height}px &middot; {imageInfo.patchCount}{" "}
+                      patches
+                    </span>
+                  </div>
                 </>
               )}
-              {/* Active thresholds removed per request */}
-              {/* Mask Pixels removed per request */}
-              {!isSegmentation && <span>Raw detections: {rawDetectionCount}</span>}
-              {!isSegmentation && <span>Detections after NMS: {detections.length}</span>}
+              {!isSegmentation && (
+                <>
+                  <div className="info-row">
+                    <span className="info-label">Raw Dets</span>
+                    <span className="info-value font-mono" style={{ fontSize: "0.75rem" }}>
+                      {rawDetectionCount}
+                    </span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">After NMS</span>
+                    <span className="info-value font-mono" style={{ fontSize: "0.75rem" }}>
+                      {detections.length}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
-            {errorMessage && (
-              <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-600">
-                {errorMessage}
-              </p>
-            )}
+
+            {errorMessage && <div className="glass-error">{errorMessage}</div>}
           </div>
         </div>
+
         <Footer />
       </div>
     </div>

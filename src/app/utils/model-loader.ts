@@ -9,6 +9,10 @@ export type ModelOption = {
   id: string;
   name: string;
   engine: "tfjs" | "onnx";
+  /** Distinguishes FTW semantic-seg UNet from YOLO instance-seg models. */
+  modelType?: "ftw-unet" | "yolo-seg";
+  /** Number of input channels expected by the model (3 = RGB, 4 = RGBN). */
+  channels?: number;
   url: string;
   classes?: string[];
   palette?: string[];
@@ -22,6 +26,8 @@ export const MODEL_OPTIONS: ModelOption[] = [
     id: "ftw-unet-fp16",
     name: "FTW v2 UNet",
     engine: "onnx",
+    modelType: "ftw-unet",
+    channels: 4,
     url: "https://hf.co/isaaccorley/ftw-v2-onnx/resolve/main/ftw-v2-single-window-unet-efficientnetb3-fp16.onnx",
     precision: "fp16",
     description: "U-Net EfficientNet-B3 Model trained on the RGBN FTW dataset, quantized to FP16.",
@@ -30,51 +36,30 @@ export const MODEL_OPTIONS: ModelOption[] = [
     palette: ["#000000", "#00FF00", "#FF0000"],
   },
   {
-    id: "ftw-unet-fp32",
-    name: "FTW v2 UNet",
-    engine: "onnx",
-    url: "https://hf.co/isaaccorley/ftw-v2-onnx/resolve/main/ftw-v2-single-window-unet-efficientnetb3-fp32.onnx",
-    precision: "fp32",
-    description: "U-Net EfficientNet-B3 Model trained on the RGBN FTW dataset.",
-    sizeHintMb: 52,
-    classes: ["background", "field", "field_boundary"],
-    palette: ["#000000", "#00FF00", "#FF0000"],
-  },
-  {
     id: "delineateanything-fp16",
     name: "DelineateAnything",
-    engine: "tfjs",
-    url: "https://hf.co/isaaccorley/delineate-anything-tensorflowjs/resolve/main/DelineateAnything_fp16_web_model.zip",
+    engine: "onnx",
+    modelType: "yolo-seg",
+    channels: 3,
+    url: "https://huggingface.co/isaaccorley/delineate-anything-onnx/resolve/main/DelineateAnything-fp16.onnx",
     precision: "fp16",
     description: "YOLOv11n-seg model trained on the RGB FBIS-22M dataset, quantized to FP16.",
     sizeHintMb: 18,
-  },
-  {
-    id: "delineateanything-fp32",
-    name: "DelineateAnything",
-    engine: "tfjs",
-    url: "https://hf.co/isaaccorley/delineate-anything-tensorflowjs/resolve/main/DelineateAnything_fp32_web_model.zip",
-    precision: "fp32",
-    description: "YOLOv11n-seg model trained on the RGB FBIS-22M dataset.",
-    sizeHintMb: 33,
+    classes: ["background", "field"],
+    palette: ["#000000", "#00FF00"],
   },
   {
     id: "delineateanything-s-fp16",
     name: "DelineateAnything-S",
-    engine: "tfjs",
-    url: "https://hf.co/isaaccorley/delineate-anything-tensorflowjs/resolve/main/DelineateAnything-S_fp16_web_model.zip",
+    engine: "onnx",
+    modelType: "yolo-seg",
+    channels: 3,
+    url: "https://huggingface.co/isaaccorley/delineate-anything-onnx/resolve/main/DelineateAnything-S-fp16.onnx",
     precision: "fp16",
     description: "YOLOv11s-seg model trained on the RGB FBIS-22M dataset, quantized to FP16.",
     sizeHintMb: 6,
-  },
-  {
-    id: "delineateanything-s-fp32",
-    name: "DelineateAnything-S",
-    engine: "tfjs",
-    url: "https://hf.co/isaaccorley/delineate-anything-tensorflowjs/resolve/main/DelineateAnything-S_fp32_web_model.zip",
-    precision: "fp32",
-    description: "YOLOv11s-seg model trained on the RGB FBIS-22M dataset.",
-    sizeHintMb: 10,
+    classes: ["background", "field"],
+    palette: ["#000000", "#00FF00"],
   },
 ];
 
